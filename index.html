@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vantage Core</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root { --bg: #ffffff; --sidebar: #f8f9fa; --t: #1f1f1f; --b: #e3e3e3; --ai-msg: #ffffff; --user-msg: #f0f4f9; --accent: #1a73e8; }
+        [theme='dark'] { --bg: #131314; --sidebar: #1e1e1f; --t: #e3e3e3; --b: #444746; --ai-msg: #131314; --user-msg: #282a2d; --accent: #a8c7fa; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: var(--bg); color: var(--t); overflow: hidden; }
+        .sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid var(--b); display: flex; flex-direction: column; padding: 20px; transition: 0.3s; }
+        @media (max-width: 768px) { .sidebar { position: fixed; height: 100%; transform: translateX(-100%); z-index: 1000; } .sidebar.active { transform: translateX(0); } }
+        .nav-item { padding: 12px 16px; margin-bottom: 5px; border-radius: 25px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 12px; }
+        .nav-item:hover { background: var(--b); }
+        .main { flex: 1; display: flex; flex-direction: column; position: relative; }
+        header { padding: 12px 20px; border-bottom: 1px solid var(--b); display: flex; align-items: center; gap: 15px; }
+        #chat-flow { flex: 1; overflow-y: auto; padding: 20px 15% 120px; }
+        .bubble { margin-bottom: 30px; line-height: 1.6; }
+        .user-text { background: var(--user-msg); padding: 12px 20px; border-radius: 20px; width: fit-content; margin-left: auto; }
+        .input-area { position: absolute; bottom: 0; width: 100%; padding-bottom: 30px; background: linear-gradient(transparent, var(--bg) 40%); }
+        .input-wrapper { margin: 0 15%; background: var(--user-msg); border-radius: 30px; display: flex; padding: 5px 20px; align-items: center; }
+        input { flex: 1; border: none; outline: none; background: transparent; color: var(--t); height: 45px; font-size: 16px; }
+        .send-btn { background: none; border: none; color: var(--accent); font-size: 24px; cursor: pointer; }
+    </style>
+</head>
+<body theme="light">
+<div class="sidebar" id="sidebar">
+    <div style="font-weight: bold; font-size: 20px; margin-bottom: 30px;">Vantage Core</div>
+    <div class="nav-item" onclick="location.reload()">＋ New Chat</div>
+    <div class="nav-item" onclick="toggleTheme()">🌓 Theme</div>
+</div>
+<div class="main">
+    <header><button onclick="document.getElementById('sidebar').classList.toggle('active')" style="background:none; border:none; font-size:20px; color:var(--t);">☰</button> <div style="flex:1">Vantage Core</div></header>
+    <div id="chat-flow"></div>
+    <div class="input-area">
+        <div class="input-wrapper">
+            <input type="text" id="query" placeholder="Type here..." onkeypress="if(event.key==='Enter') execute()">
+            <button class="send-btn" onclick="execute()">⌱</button>
+        </div>
+    </div>
+</div>
+<script>
+    let chatContext = [];
+    function addMsg(t, u) {
+        const c = document.getElementById("chat-flow");
+        c.innerHTML += `<div class="bubble ${u ? 'user-text' : 'ai-text'}">${u ? t : marked.parse(t)}</div>`;
+        c.scrollTop = c.scrollHeight;
+    }
+    function toggleTheme() { document.body.setAttribute('theme', document.body.getAttribute('theme')==='light'?'dark':'light'); }
+    async function execute() {
+        const i = document.getElementById("query");
+        const v = i.value.trim(); if(!v) return;
+        addMsg(v, true); chatContext.push({role:"user", content:v}); i.value = "";
+        try {
+            const r = await fetch("/api/chat", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({messages: chatContext}) });
+            const d = await r.json();
+            const ai = d.choices[0].message.content;
+            addMsg(ai, false); chatContext.push({role:"assistant", content:ai});
+        } catch(e) { addMsg("Error connecting to server.", false); }
+    }
+    window.onload = () => addMsg("Welcome! How can I help you?", false);
+</script>
+</body>
+</html>
